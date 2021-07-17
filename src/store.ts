@@ -16,3 +16,7 @@ export async function publicKey(): Promise<string>{
     }
 
 }
+
+export async function logOut() {
+    albedoAddress = ""
+}

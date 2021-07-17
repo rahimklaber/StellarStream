@@ -1,56 +1,81 @@
-
-<style lang="scss" global>
+<style global lang="scss">
 
 </style>
 
 <script lang="ts">
-let isSideNavOpen = false
-import {store} from "./store"
-import { onMount } from "svelte";
-import Home from "./Home.svelte"
-import {router} from "./navigo"
+    import {logOut, publicKey, store} from "./store"
+    import {onMount} from "svelte";
+    import Home from "./Home.svelte"
+    import {router} from "./navigo"
+    import {AppBar, Button, MaterialApp,Divider} from 'svelte-materialify';
+
+    import CreateStream from "./CreateStream.svelte"
+    import Streams from "./Streams.svelte"
 
 
-let page = Home
+    let page = Home
 
-store.subscribe( value => {
-		page = value
-	}
-)
-onMount(async()=>router.updatePageLinks())
+    store.subscribe(value => {
+            page = value
+        }
+    )
+    onMount(async () => router.updatePageLinks())
 
 
-import {
-    AppBar,
-    Button,
-    Icon,
-    NavigationDrawer,
-  MaterialApp } from 'svelte-materialify';
+    const theme = "dark"
+    let loggedIn: boolean = false
+    let addr: string
 
-  import CreateStream from "./CreateStream.svelte"
-  import Streams from "./Streams.svelte"
-  let active = false;
-  function toggleNavigation() {
-    active = !active;
-  }
-  const theme = "light"
+
+    async function connectButtonOnclick() {
+        if (loggedIn) {
+            addr = ""
+            loggedIn = false
+            await logOut()
+        } else {
+            addr = await publicKey()
+            loggedIn = true
+        }
+
+    }
+
+    /**
+     * shorten stellar address.
+     *
+     * achieved by showing the first and last six characters dividen by ...
+     * e.g., GA5ZSE…K4KZVN
+     *
+     * @param address
+     */
+    function shortenAddress(address: string) {
+        return address.slice(0, 6) + "..." + address.slice(50, 56)
+    }
+
 </script>
 
 <MaterialApp {theme}>
-<div style="position:relative;height:250px">
-  <AppBar>
-    <div slot="icon">
-      <Button depressed on:click={toggleNavigation}>
-        <Icon  />
-      </Button>
+    <AppBar>
+        <div slot="title">
+            <Button  on:click={()=>router.navigate("/")}> Stellar Stream </Button>
+        </div>
+
+        <Divider vertical inset class="ml-4"/>
+        <Button data-navigo on:click={() => router.navigate("/createstreams")}>Create Streams</Button>
+        <Button data-navigo on:click={() => router.navigate("/streams")}>Claim</Button>
+        <Button data-navigo on:click={() => router.navigate("/managestreams")}>Manage Streams</Button>
+        <div style="flex-grow:1"/>
+
+        <Button on:click={connectButtonOnclick}>
+            {#if loggedIn}
+                {shortenAddress(addr)}
+            {:else}
+                connect wallet
+            {/if}
+        </Button>
+
+    </AppBar>
+    <div style="display:flex;justify-content: center;margin-top: 10px;">
+        <svelte:component this={page}/>
     </div>
-    <span slot="title"> Click The Menu </span>
-  </AppBar>
-  <NavigationDrawer style="float:left;" {active}>Content</NavigationDrawer>
-  	<div style="float: left;">
-		<CreateStream />
-		<Streams/>
-	  </div>
-	
-</div>
+
 </MaterialApp>
