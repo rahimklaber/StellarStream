@@ -4,14 +4,10 @@
 </script>
 
 <Tile>
-    <h1>Galactic Wizard</h1>
+    <h1>Stellar Stream</h1>
     <br>
-    <h2>Tokenize.....</h2>
-    <h3>a sword</h3>
-    <h3>a character</h3>
-    <h3>a house</h3>
-    <h3>your life</h3>
-    <br>
-    <h2>Tokenize..... Anything</h2>
+    <h5>
+        Stream assets from one account to another.
+    </h5>
 
 </Tile>

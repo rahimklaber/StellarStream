@@ -53,8 +53,8 @@
 
 </script>
 
-<MaterialApp {theme}>
-    <AppBar>
+<MaterialApp {theme} >
+    <AppBar >
         <div slot="title">
             <Button  on:click={()=>router.navigate("/")}> Stellar Stream </Button>
         </div>
