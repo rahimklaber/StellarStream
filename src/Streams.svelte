@@ -10,9 +10,23 @@
     } from "svelte-materialify";
 
     import  StreamProps from "./StreamProps";
-    const testProps = [new StreamProps("testCreator",100,2000,"usdc",20,0,22)]
+    import {findPaymentStreams} from "./stellar";
+    import  {Asset} from "stellar-base";
 
-    let props: Array<StreamProps> = testProps
+    const streamTransactions = await findPaymentStreams()
+
+    const props = streamTransactions.map(tx =>{
+        const memo = tx.memo
+        const amount = 0
+        const asset = Asset.native() // only support xlm for now
+        const amountClaimed = 0 // todo query horizon, what if account is not created?
+        const {_, endTime, interval} = memo.split("_")
+        new StreamProps(tx.source_account,endTime,amount,interval,amountClaimed,amount-amountClaimed,asset,tx.hash)
+    })
+
+    // const testProps = [new StreamProps("testCreator",100,2000,"usdc",20,0,22)]
+    //
+    // let props: Array<StreamProps> = testProps
 </script>
 
 <div style="margin-top: 2.5%">

@@ -2,28 +2,51 @@
 Component for creating streams.
 -->
 <script lang="ts">
+import type { Asset } from "stellar-base";
+
     import {Button, Card, Select, TextField} from "svelte-materialify"
     import {assets} from "./Assets";
+import {createPaymentStream, findPaymentStreams} from "./stellar";
 
     let recipient: String
     let amount: String
     let endDate: String
     let interval: String
-    let asset: any
+    let asset: Asset
     let asset_name: string
     let intervalUnit: string
 
-    function createStream(e: Event) {
-
+    async function createStream(e: Event) {
+        const {succes,hash} =  createPaymentStream(amount,asset,recipient,parseInt(endDate),parseInt(interval))
+        if(succes){
+            console.log("created stream")
+        }else{
+            console.log("something went wrong")
+        }
     }
 
-    function selectOnChange(obj: any) {
-        asset = obj
-        asset_name = obj.name
+    function selectOnChange(obj: CustomEvent) {
+        if(obj.detail == undefined || typeof(obj.detail)== "string"){
+            console.log('its is undefined')
+            return
+        }
+        asset = obj.detail
+        asset_name = asset.code
+        console.log(obj)
+        console.log("asset name" + asset_name)
     }
 
     let intervalUnits = ["H","m","s"]
 
+    function mapAsset(asset : Asset){
+        const name = asset.code
+        return {
+            "name" : name,
+            "value" : asset
+        }
+    }
+
+    const selectItems = assets.map(mapAsset)
 </script>
 
 <div style="margin-top: 2.5%">
@@ -38,7 +61,7 @@ Component for creating streams.
         <TextField bind:value={amount} placeholder="amount" outlined style="padding-right: 5px;">
             Amount
         </TextField>
-        <Select bind:value={asset_name} items={assets} on:change={selectOnChange}
+        <Select bind:value={asset_name} items={selectItems} on:change={selectOnChange}
                 outlined>Asset</Select>
     </div>
     <TextField bind:value={endDate} placeholder="End Date" outlined style="padding-top:10px;">End Date

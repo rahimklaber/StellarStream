@@ -1,3 +1,4 @@
+import type {Asset} from "stellar-base";
 
 export default class StreamProps {
     creator: string
@@ -6,9 +7,10 @@ export default class StreamProps {
     interval: number // interval at which amount to claim increases
     amountClaimed: number
     amountAvailableToClaim: number
-    asset: string
+    asset: Asset
+    txHash: string
 
-    constructor(creator: string, endTime: number, amount : number, asset: string, interval: number, amountClaimed: number,amountAvailableToClaim: number){
+    constructor(creator: string, endTime: number, amount : number, interval: number, amountClaimed: number,amountAvailableToClaim: number,asset: Asset,txHash : string){
         this.creator = creator
         this.endTime = endTime
         this.amount = amount
@@ -16,5 +18,6 @@ export default class StreamProps {
         this.amountClaimed = amountClaimed
         this.amountAvailableToClaim = amountAvailableToClaim
         this.asset = asset
+        this.txHash = txHash
     }
 }
