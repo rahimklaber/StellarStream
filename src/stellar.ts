@@ -14,6 +14,7 @@ import TransactionRecord = ServerApi.TransactionRecord;
 //Todo: env variables?
 export const network: Networks = Networks.TESTNET
 export const server = new Server("https://horizon-testnet.stellar.org")
+const tssAccountId = "GC5XOHMSPTM2HHR5UJQC5DGWPJ2SQECS32MGSFDRGKPI67NFGFZZ6EF2" // todo
 
 export async function findPaymentStreams(): Promise<ServerApi.TransactionRecord[]> {
     const accountId = await publicKey()
@@ -55,7 +56,7 @@ export async function createPaymentStream(amount: string, asset: Asset, destinat
         .addOperation(Operation.createAccount({
             destination: streamKeyPair.publicKey(),
             startingBalance: "1"
-        }))
+        }))//todo just use create account and not an extra payment
         .addOperation(Operation.payment({
             amount: amount,
             asset: asset,
@@ -65,7 +66,7 @@ export async function createPaymentStream(amount: string, asset: Asset, destinat
             Operation.setOptions(
                 {
                     signer: {
-                        ed25519PublicKey: "todo", // TOdo
+                        ed25519PublicKey: tssAccountId,
                         weight: 1
                     },
                     source: streamKeyPair.publicKey()
@@ -90,12 +91,15 @@ export async function createPaymentStream(amount: string, asset: Asset, destinat
             asset: Asset.native(),
             destination: destination
         }))
+        .setTimeout(0)
         .addMemo(Memo.text(`stellarstream_${endTime}_${interval}`)) // "stellarstream_endEpoch_intervalSeconds"
         .build()
 
     const albedoSignedXdr = await signWithAlbedo(tx.toXDR())
     const albedoSignedTx = TransactionBuilder.fromXDR(albedoSignedXdr, network)
     albedoSignedTx.sign(streamKeyPair)
+
+    console.log(albedoSignedTx.toXDR())
 
     const submitResponse = await server.submitTransaction(albedoSignedTx)
     // @ts-ignore

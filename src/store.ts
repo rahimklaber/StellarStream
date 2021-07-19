@@ -6,7 +6,7 @@ import {writable} from "svelte/store"
 import Home from "./Home.svelte"
 import albedo from "@albedo-link/intent"
 import type { Account } from "stellar-sdk"
-import { server } from "./stellar"
+import {network, server} from "./stellar"
 import { serverUrl } from "./backend"
 let albedoAddress =""
 let _account : Account
@@ -47,6 +47,7 @@ export async function logOut() {
  */
 export async function signWithAlbedo(txXdr : string): Promise<string> {
     const signedXdr = await albedo.tx({
+        network: network,
         xdr : txXdr
     })  
     return signedXdr.signed_envelope_xdr

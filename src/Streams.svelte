@@ -1,28 +1,37 @@
 <script lang="ts">
     import {
-        DataTable,
-        DataTableHead,
-        DataTableRow,
-        DataTableCell,
-        DataTableBody,
         Button,
-        Card
+        Card,
+        DataTable,
+        DataTableBody,
+        DataTableCell,
+        DataTableHead,
+        DataTableRow
     } from "svelte-materialify";
 
-    import  StreamProps from "./StreamProps";
+    import StreamProps from "./StreamProps";
     import {findPaymentStreams} from "./stellar";
-    import  {Asset} from "stellar-base";
+    import {Asset} from "stellar-base";
 
-    const streamTransactions = await findPaymentStreams()
+    let props: Array<StreamProps> = []
 
-    const props = streamTransactions.map(tx =>{
-        const memo = tx.memo
-        const amount = 0
-        const asset = Asset.native() // only support xlm for now
-        const amountClaimed = 0 // todo query horizon, what if account is not created?
-        const {_, endTime, interval} = memo.split("_")
-        new StreamProps(tx.source_account,endTime,amount,interval,amountClaimed,amount-amountClaimed,asset,tx.hash)
-    })
+    async function populateStreams() {
+        console.log("trying")
+        const streamTransactions = await findPaymentStreams()
+
+        props = await Promise.all(streamTransactions.map(async (tx) => {
+            const operations = (await tx.operations()).records
+            console.log(operations)
+            const amount = operations[1].amount
+            const asset = Asset.native() // only support xlm for now
+            const amountClaimed = 0 // todo query horizon, what if account is not created?
+            const {_, endTime, interval} = tx.memo.split("_")
+            return new StreamProps(tx.source_account, endTime, amount, interval, amountClaimed, amount - amountClaimed, asset, tx.hash)
+        }))
+    }
+
+    populateStreams()
+
 
     // const testProps = [new StreamProps("testCreator",100,2000,"usdc",20,0,22)]
     //

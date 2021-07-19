@@ -15,5 +15,5 @@
 //     }
 // }
 import { Asset } from "stellar-base"
-export const assets =  [new Asset("USDC","GC5W3BH2MQRQK2H4A6LP3SXDSAAY2W2W64OWKKVNQIAOVWSAHFDEUSDC")]
+export const assets =  [new Asset("USDC","GC5W3BH2MQRQK2H4A6LP3SXDSAAY2W2W64OWKKVNQIAOVWSAHFDEUSDC"),Asset.native()]
 

@@ -32,11 +32,9 @@
   },
   "dependencies": {
     "@albedo-link/intent": "^0.10.2",
-    "@carbon/type": "^10.31.0",
     "@mdi/js": "^5.9.55",
     "axios": "^0.21.1",
     "bigfloat.js": "^3.0.1",
-    "ipfs-http-client": "^48.2.2",
     "navigo": "^8.11.1",
     "sirv-cli": "^1.0.12",
     "stellar-sdk": "^8.2.3",
