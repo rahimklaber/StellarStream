@@ -84,14 +84,25 @@ export async function createPaymentStream(amount: string, asset: Asset, destinat
     const fee = await server.fetchBaseFee()
     const streamKeyPair = Keypair.random()
     const accountObject: Account = await account()
-    const tx = new TransactionBuilder(accountObject, {
+    let native = true
+    let reserve = "2" // extra xlm for extra signers
+    if (asset != Asset.native()){
+        native = false
+        let reserve = "2.5" // trustline
+    }
+    const txBuilder = new TransactionBuilder(accountObject, {
         fee: fee.toString(),
         networkPassphrase: Networks.TESTNET
     })
         .addOperation(Operation.createAccount({
             destination: streamKeyPair.publicKey(),
-            startingBalance: "2" // extra xlm for extra signers
+            startingBalance: reserve
         }))//todo just use create account and not an extra payment
+        .addOperation(Operation.changeTrust({
+            asset: asset,
+            source: streamKeyPair.publicKey()
+        }))
+       const tx =  txBuilder
         .addOperation(Operation.payment({
             amount: amount,
             asset: asset,

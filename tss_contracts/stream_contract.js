@@ -13,6 +13,7 @@ import {
 } from "stellar-sdk"
 import {BigNumber} from "bignumber.js"
 
+const kp = Keypair.fromSecret("SD3LG5GL2YV4PKBS24GB5MNRYDWBWRVGWBXCMMPHSMP7TKUD4R3UOALN")
 module.exports = (body) => {
     const {hash} = body
     // const { TransactionBuilder, Networks, BASE_FEE, Operation, Asset, Account } = StellarBase

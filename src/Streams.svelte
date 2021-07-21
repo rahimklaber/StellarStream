@@ -31,8 +31,13 @@
         props = await Promise.all(streamTransactions.map(async (tx) => {
             const operations = (await tx.operations()).records
             console.log(operations)
-            const amount = operations[1].amount
-            const asset = Asset.native() // only support xlm for now
+            let amount = operations[1].amount
+            let asset = Asset.native()
+            // if asset is not native, snd op is change trust
+            if(operations[1].type!="create_account"){
+                operations[2].amount
+                asset = new Asset(operations[2].asset_code,operations[2].asset_issuer)
+            }
             const amountClaimed = 0 // todo query horizon, what if account is not created?
             const [_, endTime, interval] = tx.memo.split("_")
             return new StreamProps(tx.source_account, await publicKey(),endTime, amount, interval, amountClaimed, amount - amountClaimed, asset, tx.hash)
