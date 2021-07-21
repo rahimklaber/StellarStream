@@ -29,10 +29,12 @@ module.exports = (body) => {
                 .then(operations => {
                     let native = true
                     let reserve = operations._embedded.records[0].starting_balance
-                    if (operations._embedded.records[1].type !== "payent") {
+                    if (operations._embedded.records[1].type !== "payment") {
                         native = false
                     }
+                    console.log(operations._embedded.records)
                     const streamAddress = operations._embedded.records[0].account
+                    console.log(native)
                     const destAddress = native ? operations._embedded.records[4].to : operations._embedded.records[5].to
                     const currTime = Math.round(Date.now() / 1000) // seconds since epoch Todo: do we neet more precision?
                     console.log(startTime)
@@ -49,15 +51,16 @@ module.exports = (body) => {
                         .then(account => {
                             console.log(account)
                             // if the account holds other assets beside xlm then the stream is for the other asset
-                            const remainingAmount = !native ? account.balances[1].balance : account.balances[0].balance - reserve
-                            const assetCode = !native ? account.balances[1].asset_code : undefined
-                            const assetIssuer = !native ? account.balances[1].asset_issuer : undefined
+                            const remainingAmount = !native ? account.balances[0].balance : account.balances[0].balance - reserve
+                            const assetCode = !native ? account.balances[0].asset_code : undefined
+                            const assetIssuer = !native ? account.balances[0].asset_issuer : undefined
                             const asset = !native ? new Asset(assetCode, assetIssuer) : Asset.native()
                             console.log("fractin " + fraction)
                             const toClaim = totalAmount * fraction - (totalAmount - remainingAmount)
                             return fetch(HORIZON_URL + `/accounts/${destAddress}`)
                                 .then(destAccountres => destAccountres.json())
                                 .then(destAccount => {
+                                    console.log(destAddress)
                                     const destAccountObj = new Account(destAddress, destAccount.sequence)
                                     return new TransactionBuilder(destAccountObj, {
                                         fee: BASE_FEE,
