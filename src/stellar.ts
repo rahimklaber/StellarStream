@@ -14,18 +14,53 @@ import TransactionRecord = ServerApi.TransactionRecord;
 //Todo: env variables?
 export const network: Networks = Networks.TESTNET
 export const server = new Server("https://horizon-testnet.stellar.org")
-const tssAccountId = "GC5XOHMSPTM2HHR5UJQC5DGWPJ2SQECS32MGSFDRGKPI67NFGFZZ6EF2" // todo
+const tssAccountId = "GDBNLLPNHN3C3DLKHA2CPUHAXSV5EQB4J47IJNJ2DW76RUMZT2CAGDDH" // todo
 
+/**
+ * get the assets for which the user has trustlines to.
+ */
+export async function getAssets(){
+    const assets =  (await server.accounts().accountId(await publicKey()).call())
+        .balances
+        .filter(balance => "asset_code" in balance)
+        .map(balance => new Asset(balance.asset_code,balance.asset_issuer))
+    assets.push(Asset.native())
+    return assets
+}
+
+/**
+ * Find streams for which you are the recipient
+ */
 export async function findPaymentStreams(): Promise<ServerApi.TransactionRecord[]> {
     const accountId = await publicKey()
     const operationsToTest = await server
         .payments()
         .forAccount(accountId)
-        .limit(25) // todo figure this out
+        .limit(200) // todo figure this out
         .call()
 
     const streams = await Promise.all(operationsToTest.records.filter(record => {
         return record.type == "payment" && record.amount == "0.0000001" && record.to == accountId
+    }).map(async (record) => {
+        return await record.transaction()
+    }))
+
+    return streams.filter(tx => tx.memo.startsWith("stellarstream"))
+}
+
+/**
+ * Find stream you have created
+ */
+export async function findCreatedStreams() :  Promise<ServerApi.TransactionRecord[]>{
+    const accountId = await publicKey()
+    const operationsToTest = await server
+        .payments()
+        .forAccount(accountId)
+        .limit(200) // todo figure this out
+        .call()
+
+    const streams = await Promise.all(operationsToTest.records.filter(record => {
+        return record.type == "payment" && record.amount == "0.0000001" && record.from == accountId
     }).map(async (record) => {
         return await record.transaction()
     }))
@@ -55,7 +90,7 @@ export async function createPaymentStream(amount: string, asset: Asset, destinat
     })
         .addOperation(Operation.createAccount({
             destination: streamKeyPair.publicKey(),
-            startingBalance: "1"
+            startingBalance: "2" // extra xlm for extra signers
         }))//todo just use create account and not an extra payment
         .addOperation(Operation.payment({
             amount: amount,

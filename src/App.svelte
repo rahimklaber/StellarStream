@@ -8,7 +8,7 @@
     import Home from "./Home.svelte"
     import {router} from "./navigo"
     import {AppBar, Button, MaterialApp,Divider} from 'svelte-materialify';
-
+    import {shortenAddress} from "./utils";
     import CreateStream from "./CreateStream.svelte"
     import Streams from "./Streams.svelte"
 
@@ -27,7 +27,7 @@
     let addr: string
 
 
-    async function connectButtonOnclick() {
+    export async function connectButtonOnclick() {
         if (loggedIn) {
             addr = ""
             loggedIn = false
@@ -39,17 +39,7 @@
 
     }
 
-    /**
-     * shorten stellar address.
-     *
-     * achieved by showing the first and last six characters dividen by ...
-     * e.g., GA5ZSE…K4KZVN
-     *
-     * @param address
-     */
-    function shortenAddress(address: string) {
-        return address.slice(0, 6) + "..." + address.slice(50, 56)
-    }
+
 
 </script>
 
@@ -67,7 +57,7 @@
 
         <Button on:click={connectButtonOnclick}>
             {#if loggedIn}
-                {shortenAddress(addr)}
+                 {shortenAddress(addr)}
             {:else}
                 connect wallet
             {/if}

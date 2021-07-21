@@ -35,6 +35,7 @@
     "@mdi/js": "^5.9.55",
     "axios": "^0.21.1",
     "bigfloat.js": "^3.0.1",
+    "bignumber.js": "^9.0.1",
     "navigo": "^8.11.1",
     "sirv-cli": "^1.0.12",
     "stellar-sdk": "^8.2.3",

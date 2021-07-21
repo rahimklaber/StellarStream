@@ -16,17 +16,16 @@
     } from "svelte-materialify";
 
     import StreamProps from "./StreamProps";
-    import {findPaymentStreams} from "./stellar";
+    import {findCreatedStreams, findPaymentStreams} from "./stellar";
     import {Asset} from "stellar-base";
     import {shortenAddress} from "./utils";
     import {mdiContentCopy} from "@mdi/js";
-    import {publicKey} from "./store";
 
     let props: Array<StreamProps> = []
 
     async function populateStreams() {
         console.log("trying")
-        const streamTransactions = await findPaymentStreams()
+        const streamTransactions = await findCreatedStreams()
 
         props = await Promise.all(streamTransactions.map(async (tx) => {
             const operations = (await tx.operations()).records
@@ -35,7 +34,7 @@
             const asset = Asset.native() // only support xlm for now
             const amountClaimed = 0 // todo query horizon, what if account is not created?
             const [_, endTime, interval] = tx.memo.split("_")
-            return new StreamProps(tx.source_account, await publicKey(),endTime, amount, interval, amountClaimed, amount - amountClaimed, asset, tx.hash)
+            return new StreamProps(tx.source_account, operations[operations.length-1].to,endTime, amount, interval, amountClaimed, amount - amountClaimed, asset, tx.hash)
         }))
     }
 
@@ -65,7 +64,7 @@
                     <DataTableCell>Asset</DataTableCell>
                     <DataTableCell>End time</DataTableCell>
                     <DataTableCell>Interval</DataTableCell>
-                    <DataTableCell>Creator</DataTableCell>
+                    <DataTableCell>recipient</DataTableCell>
                 </DataTableRow>
             </DataTableHead>
             <DataTableBody>
@@ -87,13 +86,13 @@
                             {prop.interval}
                         </DataTableCell>
                         <DataTableCell>
-                            {shortenAddress(prop.creator)}
-                            <span class="copyhover" on:click={e => updateClipboard(prop.creator)}>
+                            {shortenAddress(prop.recipient)}
+                            <span class="copyhover" on:click={e => updateClipboard(prop.recipient)}>
                                 <Icon path={mdiContentCopy}/>
                             </span>
                         </DataTableCell>
                         <DataTableCell>
-                            <Button>Claim</Button>
+                            <Button>reclaim</Button>
                         </DataTableCell>
                     </DataTableRow>
                 {/each}

@@ -6,7 +6,7 @@ import type { Asset } from "stellar-base";
 
     import {Button, Card, Select, TextField} from "svelte-materialify"
     import {assets} from "./Assets";
-import {createPaymentStream, findPaymentStreams} from "./stellar";
+import {createPaymentStream, findPaymentStreams, getAssets} from "./stellar";
 
     let recipient: String
     let amount: String
@@ -46,7 +46,14 @@ import {createPaymentStream, findPaymentStreams} from "./stellar";
         }
     }
 
-    const selectItems = assets.map(mapAsset)
+    let selectItems :Array<{name,value}>
+    async function populateAssets (){
+        selectItems = (await getAssets()).map(mapAsset)
+        console.log(selectItems)
+
+    }
+    populateAssets()
+
 </script>
 
 <div style="margin-top: 2.5%">
@@ -61,7 +68,7 @@ import {createPaymentStream, findPaymentStreams} from "./stellar";
         <TextField bind:value={amount} placeholder="amount" outlined style="padding-right: 5px;">
             Amount
         </TextField>
-        <Select bind:value={asset_name} items={selectItems} on:change={selectOnChange}
+        <Select bind:value={asset_name} bind:items={selectItems} on:change={selectOnChange}
                 outlined>Asset</Select>
     </div>
     <TextField bind:value={endDate} placeholder="End Date" outlined style="padding-top:10px;">End Date

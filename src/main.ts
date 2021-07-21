@@ -4,7 +4,7 @@ import {store} from "./store"
 import Home from "./Home.svelte"
 import Streams from "./Streams.svelte"
 import CreateStreams from "./CreateStream.svelte"
-
+import ManageStreams from "./ManageStreams.svelte"
 const app = new App({
     target: document.body,
 });
@@ -20,7 +20,7 @@ router.on(
             store.set(Streams)
         },
         "/managestreams": function () {
-            store.set(Home)
+            store.set(ManageStreams)
         },
 
 
