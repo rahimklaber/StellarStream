@@ -98,10 +98,12 @@ export async function createPaymentStream(amount: string, asset: Asset, destinat
             destination: streamKeyPair.publicKey(),
             startingBalance: reserve
         }))//todo just use create account and not an extra payment
-        .addOperation(Operation.changeTrust({
-            asset: asset,
-            source: streamKeyPair.publicKey()
-        }))
+        if(!native){
+        txBuilder.addOperation(Operation.changeTrust({
+                asset: asset,
+                source: streamKeyPair.publicKey()
+            }))
+        }
        const tx =  txBuilder
         .addOperation(Operation.payment({
             amount: amount,
