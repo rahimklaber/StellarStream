@@ -17,11 +17,12 @@ import {createPaymentStream, findPaymentStreams, getAssets} from "./stellar";
     let intervalUnit: string
 
     async function createStream(e: Event) {
-        const [succes,hash]  =  await createPaymentStream(amount,asset,recipient,parseInt(endDate),parseInt(interval))
+        const [succes,hash,res]  =  await createPaymentStream(amount,asset,recipient,parseInt(endDate),parseInt(interval))
         if(succes){
             console.log("created stream")
         }else{
             console.log("something went wrong")
+            console.log(res)
         }
     }
 

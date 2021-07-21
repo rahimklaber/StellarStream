@@ -52,7 +52,7 @@
 <div style="margin-top: 2.5%">
 
     <h2>
-        Claim streamed assets
+        Manage created streams
     </h2>
 
     <Card style="padding:10px; margin-top: 5%;background-color: #272C2E;">

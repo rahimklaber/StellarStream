@@ -27,25 +27,32 @@ module.exports = (body) => {
             return fetch(HORIZON_URL + `/transactions/${hash}/operations`)
                 .then(opres => opres.json())
                 .then(operations => {
+                    let native = true
+                    let reserve = operations._embedded.records[0].starting_balance
+                    if (operations._embedded.records[1].type !== "payent") {
+                        native = false
+                    }
                     const streamAddress = operations._embedded.records[0].account
-                    const destAddress = operations._embedded.records[4].to // todo
+                    const destAddress = native ? operations._embedded.records[4].to : operations._embedded.records[5].to
                     const currTime = Math.round(Date.now() / 1000) // seconds since epoch Todo: do we neet more precision?
                     console.log(startTime)
                     console.log(currTime)
                     console.log(endTime)
                     const fraction = Math.floor(((currTime - startTime) / interval)) * (interval / (endTime - startTime)) // Todo: check if this makes sense
 
-                    const totalAmount = operations._embedded.records[1].amount // todo other assets other than xlm
+                    const totalAmount = native ? operations._embedded.records[1].amount : operations._embedded.records[2].amount
+                    // if asset is not native, snd op is change trust
+
 
                     return fetch(HORIZON_URL + `/accounts/${streamAddress}`)
                         .then(accountres => accountres.json())
                         .then(account => {
                             console.log(account)
                             // if the account holds other assets beside xlm then the stream is for the other asset
-                            const remainingAmount = account.balances.length > 1 ? account.balances[1].balance : account.balances[0].balance - 1
-                            const assetCode = account.balances.length > 1 ? account.balances[1].asset_code : undefined
-                            const assetIssuer = account.balances.length > 1 ? account.balances[1].asset_issuer : undefined
-                            const asset = account.balances.length > 1 ? new Asset(assetCode, assetIssuer) : Asset.native()
+                            const remainingAmount = !native ? account.balances[1].balance : account.balances[0].balance - reserve
+                            const assetCode = !native ? account.balances[1].asset_code : undefined
+                            const assetIssuer = !native ? account.balances[1].asset_issuer : undefined
+                            const asset = !native ? new Asset(assetCode, assetIssuer) : Asset.native()
                             console.log("fractin " + fraction)
                             const toClaim = totalAmount * fraction - (totalAmount - remainingAmount)
                             return fetch(HORIZON_URL + `/accounts/${destAddress}`)
@@ -61,7 +68,7 @@ module.exports = (body) => {
                                                 {
                                                     source: streamAddress,
                                                     destination: destAddress,
-                                                    amount: fraction > 1 || fraction < 0.00001 ? (new BigNumber(remainingAmount())).toPrecision(7, 1) : (new BigNumber(toClaim)).toPrecision(7, 1),
+                                                    amount: fraction > 1 || fraction < 0.00001 ? (new BigNumber(remainingAmount)).toPrecision(7, 1) : (new BigNumber(toClaim)).toPrecision(7, 1),
                                                     asset: asset
                                                 }
                                             )

@@ -34,8 +34,8 @@
             let amount = operations[1].amount
             let asset = Asset.native()
             // if asset is not native, snd op is change trust
-            if(operations[1].type!="create_account"){
-                operations[2].amount
+            if(operations[1].type!="payment"){
+                amount = operations[2].amount
                 asset = new Asset(operations[2].asset_code,operations[2].asset_issuer)
             }
             const amountClaimed = 0 // todo query horizon, what if account is not created?

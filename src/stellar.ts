@@ -1,6 +1,6 @@
 import {
     Account,
-    Asset,
+    Asset, Horizon,
     Keypair,
     Memo,
     Networks,
@@ -80,7 +80,7 @@ export async function findCreatedStreams() :  Promise<ServerApi.TransactionRecor
  * @param endTime end time in epoch seconds
  * @param interval interval to increase claimable amount
  */
-export async function createPaymentStream(amount: string, asset: Asset, destination: string, endTime: number, interval: number): Promise<[boolean, string]> {
+export async function createPaymentStream(amount: string, asset: Asset, destination: string, endTime: number, interval: number): Promise<[boolean, string, Horizon.SubmitTransactionResponse]> {
     const fee = await server.fetchBaseFee()
     const streamKeyPair = Keypair.random()
     const accountObject: Account = await account()
@@ -88,7 +88,7 @@ export async function createPaymentStream(amount: string, asset: Asset, destinat
     let reserve = "2" // extra xlm for extra signers
     if (asset != Asset.native()){
         native = false
-        let reserve = "2.5" // trustline
+        reserve = "2.5" // trustline
     }
     const txBuilder = new TransactionBuilder(accountObject, {
         fee: fee.toString(),
@@ -152,8 +152,8 @@ export async function createPaymentStream(amount: string, asset: Asset, destinat
     const submitResponse = await server.submitTransaction(albedoSignedTx)
     // @ts-ignore
     if (submitResponse.successful) {
-        return [true, submitResponse.hash]
+        return [true, submitResponse.hash,submitResponse]
     } else {
-        return [false, ""]
+        return [false, "",submitResponse]
     }
 }
