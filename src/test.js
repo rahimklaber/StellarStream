@@ -1,22 +1,15 @@
-/**
- * Contract for Claiming a stellar stream.
- * @param body request body containing the stream tx hash
- */
-// import {
-//     Account,
-//     Asset,
-//     BASE_FEE,
-//     Keypair,
-//     Networks,
-//     Operation,
-//     TransactionBuilder
-// } from "stellar-sdk"
-// import {BigNumber} from "bignumber.js"
+var express = require("@runkit/runkit/express-endpoint/1.0.0");
+const fetch = require("node-fetch")
+const {BigNumber} = require( "bignumber.js")
 
-module.exports = (body) => {
-    const {hash} = body
-    const { TransactionBuilder, Networks, BASE_FEE, Operation, Asset, Account } = StellarSDK
-    return fetch(HORIZON_URL + `/transactions/${hash}`)
+const { TransactionBuilder, Networks, BASE_FEE, Operation, Asset, Account, Keypair } =require( "stellar-sdk")
+
+var app = express(exports);
+app.get("/:hash", (req, res) => {
+
+    const hash = req.params.hash
+    const HORIZON_URL ="https://horizon-testnet.stellar.org"
+    const xdr = await fetch(HORIZON_URL + `/transactions/${hash}`)
         .then(res => res.json())
         .then(tx => {
             // end and interval of stream in epoch seconds
@@ -31,14 +24,9 @@ module.exports = (body) => {
                     if (operations._embedded.records[1].type !== "payment") {
                         native = false
                     }
-                    console.log(operations._embedded.records)
                     const streamAddress = operations._embedded.records[0].account
-                    console.log(native)
                     const destAddress = native ? operations._embedded.records[4].to : operations._embedded.records[5].to
                     const currTime = Math.round(Date.now() / 1000) // seconds since epoch Todo: do we neet more precision?
-                    console.log(startTime)
-                    console.log(currTime)
-                    console.log(endTime)
                     const fraction = Math.floor(((currTime - startTime) / interval)) * (interval / (endTime - startTime)) // Todo: check if this makes sense
 
                     const totalAmount = native ? operations._embedded.records[1].amount : operations._embedded.records[2].amount
@@ -59,7 +47,6 @@ module.exports = (body) => {
                             return fetch(HORIZON_URL + `/accounts/${destAddress}`)
                                 .then(destAccountres => destAccountres.json())
                                 .then(destAccount => {
-                                    console.log(destAddress)
                                     const destAccountObj = new Account(destAddress, destAccount.sequence)
                                     return new TransactionBuilder(destAccountObj, {
                                         fee: BASE_FEE,
@@ -82,4 +69,5 @@ module.exports = (body) => {
                         })
                 })
         })
-}
+    res.send({hi:req.params.hash})
+})

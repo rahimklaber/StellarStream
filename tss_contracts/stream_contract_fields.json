@@ -1,0 +1,8 @@
+[
+  {
+    "name": "hash",
+    "type": "string",
+    "description": "hash of the transactions when the payment stream was created",
+    "rule": "Required"
+  }
+]

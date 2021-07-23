@@ -1,29 +1,119 @@
 import {
     Account,
-    Asset, Horizon,
+    Asset,
+    Claimant,
+    Horizon,
     Keypair,
     Memo,
     Networks,
     Operation,
     Server,
     ServerApi,
-    TransactionBuilder,
+    TransactionBuilder
 } from "stellar-sdk"
 import {account, publicKey, signWithAlbedo} from "./store"
-import TransactionRecord = ServerApi.TransactionRecord;
+import {Buffer} from "buffer"
 //Todo: env variables?
 export const network: Networks = Networks.TESTNET
 export const server = new Server("https://horizon-testnet.stellar.org")
 const tssAccountId = "GDBNLLPNHN3C3DLKHA2CPUHAXSV5EQB4J47IJNJ2DW76RUMZT2CAGDDH" // todo
+window.xd = createTurretFeeTokenTxFromClaimableId
+window.xd2 = createClaimableBalanceForTurret
+export async function createTurretFeeTokenTxFromClaimableId(turretAddr: string,claimableId: string, amount: string,txfunctionHash : string):Promise<[boolean,string]>{
+    try {
+        console.log(claimableId)
+        const tx = new TransactionBuilder(new Account(await publicKey(),"-1"),{fee: (await server.fetchBaseFee()).toString(), networkPassphrase:network})
+            .addOperation(
+                Operation.claimClaimableBalance({
+                    balanceId: claimableId,
+                    source: await publicKey()
+                })
+            )
+            .addOperation(
+                Operation.manageData(
+                    {
+                        name: "txFunctionHash",
+                        value: txfunctionHash
+                    }
+                )
+            )
+            .setTimeout(30*60*60*24)
+            .build()
+        console.log(tx.sequence)
+        console.log(tx.toXDR())
+        //todo for somereason albedo sets the sequence as "auto" when we set it to -1
+        const signedXdr = await signWithAlbedo(tx.toXDR());
+        return [true,signedXdr]
+    }catch (e) {
+        console.log(e)
+        return [false,""]
+    }
+
+
+}
+
+export async function createTurretFeeTokenTx(turretAddr: string, amount: string,txfunctionHash : string){
+    const [claimableBalanceSuccess, claimableBalanceId] = await createClaimableBalanceForTurret(turretAddr,amount,230)
+    if(!claimableBalanceSuccess){
+        return [false,""]
+    }
+   return createTurretFeeTokenTxFromClaimableId(turretAddr,claimableBalanceId,amount,txfunctionHash)
+
+}
+
+
+
+export async function createClaimableBalanceForTurret(turretAddr: string, amount: string, turretfeedays: number): Promise<[boolean, string]> {
+    try {
+        const toSign = new TransactionBuilder(await account(), {
+            fee: (await server.fetchBaseFee()).toString(),
+            networkPassphrase: network
+        }).addOperation(
+            Operation.createClaimableBalance(
+                {
+                    asset: Asset.native(),
+                    amount: amount,
+                    claimants: [new Claimant(turretAddr,Claimant.predicateUnconditional()),new Claimant(await publicKey(), Claimant.predicateNot(Claimant.predicateBeforeRelativeTime((turretfeedays * 24 * 60 * 60).toString())))]
+                }
+            )
+        )
+            .setTimeout(0)
+            .build()
+            .toXDR()
+
+        const signedXdr = await signWithAlbedo(toSign)
+
+        const submitResponse = await server.submitTransaction(TransactionBuilder.fromXDR(signedXdr, network))
+        console.log(submitResponse)
+        // @ts-ignore
+        if (submitResponse.successful) {
+            // assume that we only have only claimable balance for the turret
+            //Todo get them by descending
+            const claimableBalanceResponse = await server.claimableBalances().claimant(turretAddr).sponsor(await publicKey()).call()
+            return [true, claimableBalanceResponse.records[0].id]
+        } else {
+            return [false, ""]
+        }
+    } catch (e) {
+        console.log(e)
+        return [false, ""]
+    }
+
+
+}
+
+export async function createTurretFeeToken() {
+
+}
 
 /**
  * get the assets for which the user has trustlines to.
  */
-export async function getAssets(){
-    const assets =  (await server.accounts().accountId(await publicKey()).call())
+export async function getAssets() {
+    const assets = (await server.accounts().accountId(await publicKey()).call())
         .balances
         .filter(balance => "asset_code" in balance)
-        .map(balance => new Asset(balance.asset_code,balance.asset_issuer))
+        .map(balance => new Asset(balance.asset_code, balance.asset_issuer))
     assets.push(Asset.native())
     return assets
 }
@@ -51,7 +141,7 @@ export async function findPaymentStreams(): Promise<ServerApi.TransactionRecord[
 /**
  * Find stream you have created
  */
-export async function findCreatedStreams() :  Promise<ServerApi.TransactionRecord[]>{
+export async function findCreatedStreams(): Promise<ServerApi.TransactionRecord[]> {
     const accountId = await publicKey()
     const operationsToTest = await server
         .payments()
@@ -86,7 +176,7 @@ export async function createPaymentStream(amount: string, asset: Asset, destinat
     const accountObject: Account = await account()
     let native = true
     let reserve = "2" // extra xlm for extra signers
-    if (asset != Asset.native()){
+    if (asset != Asset.native()) {
         native = false
         reserve = "2.5" // trustline
     }
@@ -98,13 +188,13 @@ export async function createPaymentStream(amount: string, asset: Asset, destinat
             destination: streamKeyPair.publicKey(),
             startingBalance: reserve
         }))//todo just use create account and not an extra payment
-        if(!native){
+    if (!native) {
         txBuilder.addOperation(Operation.changeTrust({
-                asset: asset,
-                source: streamKeyPair.publicKey()
-            }))
-        }
-       const tx =  txBuilder
+            asset: asset,
+            source: streamKeyPair.publicKey()
+        }))
+    }
+    const tx = txBuilder
         .addOperation(Operation.payment({
             amount: amount,
             asset: asset,
@@ -152,8 +242,8 @@ export async function createPaymentStream(amount: string, asset: Asset, destinat
     const submitResponse = await server.submitTransaction(albedoSignedTx)
     // @ts-ignore
     if (submitResponse.successful) {
-        return [true, submitResponse.hash,submitResponse]
+        return [true, submitResponse.hash, submitResponse]
     } else {
-        return [false, "",submitResponse]
+        return [false, "", submitResponse]
     }
 }
