@@ -5,7 +5,9 @@ Component for creating streams.
 import type { Asset } from "stellar-base";
 
     import {Button, Card, Select, TextField} from "svelte-materialify"
-    import {assets} from "./Assets";
+
+import { Notyf } from 'notyf';
+import 'notyf/notyf.min.css';
 import {createPaymentStream, findPaymentStreams, getAssets} from "./stellar";
 
     let recipient: String
@@ -16,11 +18,16 @@ import {createPaymentStream, findPaymentStreams, getAssets} from "./stellar";
     let asset_name: string
     let intervalUnit: string
 
+    const notyf = new Notyf()
+    window.show = () => notyf.success()
+
     async function createStream(e: Event) {
         const [succes,hash,res]  =  await createPaymentStream(amount,asset,recipient,parseInt(endDate),parseInt(interval))
         if(succes){
             console.log("created stream")
+            notyf.success(`Stream created successfully. <a href=\"https://stellar.expert/explorer/testnet/tx/${hash}\" target=\"_blank\">Tx Hash</a>`)
         }else{
+            notyf.error("Creating the stream failed")
             console.log("something went wrong")
             console.log(res)
         }
@@ -56,7 +63,6 @@ import {createPaymentStream, findPaymentStreams, getAssets} from "./stellar";
     populateAssets()
 
 </script>
-
 <div style="margin-top: 2.5%">
 
    <h2>

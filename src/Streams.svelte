@@ -21,6 +21,7 @@
     import {shortenAddress} from "./utils";
     import {mdiContentCopy} from "@mdi/js";
     import {publicKey} from "./store";
+    import {updateClipboard} from "./utils";
 
     let props: Array<StreamProps> = []
 
@@ -46,13 +47,6 @@
 
     populateStreams() // Todo: figure out how to do this when you connect the wallet aswell
 
-    function updateClipboard(newClip) {
-        navigator.clipboard.writeText(newClip).then(function() {
-            /* clipboard successfully set */
-        }, function() {
-            /* clipboard write failed */
-        });
-    }
 </script>
 
 <div style="margin-top: 2.5%">
@@ -71,6 +65,7 @@
                     <DataTableCell>End time</DataTableCell>
                     <DataTableCell>Interval</DataTableCell>
                     <DataTableCell>Creator</DataTableCell>
+                    <DataTableCell>tx hash</DataTableCell>
                 </DataTableRow>
             </DataTableHead>
             <DataTableBody>
@@ -94,6 +89,12 @@
                         <DataTableCell>
                             {shortenAddress(prop.creator)}
                             <span class="copyhover" on:click={e => updateClipboard(prop.creator)}>
+                                <Icon path={mdiContentCopy}/>
+                            </span>
+                        </DataTableCell>
+                        <DataTableCell>
+                            {shortenAddress(prop.txHash)}
+                            <span class="copyhover" on:click={e => updateClipboard(prop.txHash)}>
                                 <Icon path={mdiContentCopy}/>
                             </span>
                         </DataTableCell>

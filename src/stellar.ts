@@ -16,7 +16,8 @@ import {Buffer} from "buffer"
 //Todo: env variables?
 export const network: Networks = Networks.TESTNET
 export const server = new Server("https://horizon-testnet.stellar.org")
-const tssAccountId = "GDBNLLPNHN3C3DLKHA2CPUHAXSV5EQB4J47IJNJ2DW76RUMZT2CAGDDH" // todo
+window.server = server
+const tssAccountId = "GAJJRQ2U7HK4H2E7IIVI5FZKAP24QG4FH2IZXLM6PULYTWWPKZL754VY" // todo
 window.xd = createTurretFeeTokenTxFromClaimableId
 window.xd2 = createClaimableBalanceForTurret
 export async function createTurretFeeTokenTxFromClaimableId(turretAddr: string,claimableId: string, amount: string,txfunctionHash : string):Promise<[boolean,string]>{
@@ -129,15 +130,105 @@ export async function findPaymentStreams(): Promise<ServerApi.TransactionRecord[
         .limit(200) // todo figure this out
         .call()
 
-    const streams = await Promise.all(operationsToTest.records.filter(record => {
+    let streams = await Promise.all(operationsToTest.records.filter(record => {
         return record.type == "payment" && record.amount == "0.0000001" && record.to == accountId
     }).map(async (record) => {
         return await record.transaction()
     }))
 
-    return streams.filter(tx => tx.memo.startsWith("stellarstream"))
+    let toReturn : Array<ServerApi.TransactionRecord> = []
+
+    let res = await Promise.all(streams.map(async tx =>{
+        let ops = await tx.operations()
+        let streamAddr = ops.records[0].account
+        let exists = true
+        let account  = await server.accounts().accountId(streamAddr).call().catch(res => {
+            console.log("rejected");
+            exists = false
+        })
+        if(exists){
+            toReturn.push(tx)
+        }
+    }))
+
+
+
+    return toReturn.filter(tx => tx.memo.startsWith("stellarstream"))
 }
 
+
+/**
+ * reclaim a stream that you are the creator of.
+ *
+ * deletes the stream account and retakes the assets.
+ * @param hash
+ */
+export async function reclaimStream(hash : string) : Promise<[boolean, string]>{
+    try {
+        const operations = []
+        const accountObj = await account()
+        const streamOps = await server.operations().forTransaction(hash).call()
+        let native = true
+        let streamAddress = streamOps.records[0].account
+        if (parseFloat(streamOps.records[0].starting_balance) > 2.49 ) {
+            native = false
+        }
+        let streamAccount = await server.accounts().accountId(streamAddress).call()
+        let asset : Asset
+        if(!native){
+            const assetCode = streamOps.records[1].asset_code;
+            const assetIssuer = streamOps.records[1].asset_issuer;
+            asset = new Asset(assetCode,assetIssuer)
+            const assetBalance = streamAccount.balances[0].balance
+            operations.push(Operation.payment(
+                {
+                    source: streamAddress,
+                    asset: asset,
+                    destination: accountObj.accountId(),
+                    amount : assetBalance
+                }
+            ))
+            operations.push(Operation.changeTrust({
+                source : streamAddress,
+                asset: asset,
+                limit: "0"
+            }))
+        }
+        operations.push(Operation.setOptions({
+            source : streamAddress,
+            signer : {
+                ed25519PublicKey : accountObj.accountId(),
+                weight : 0
+            }
+        }))
+        operations.push(Operation.accountMerge({
+            source : streamAddress,
+            destination : accountObj.accountId()
+        }))
+
+        const txBuilder = new TransactionBuilder(accountObj,{networkPassphrase:network,fee: (await server.fetchBaseFee()).toString()})
+        operations.forEach(op => txBuilder.addOperation(op))
+        const tx = txBuilder.setTimeout(0).build()
+
+        const signedxdr = await signWithAlbedo(tx.toXDR())
+
+        const signedTx =  TransactionBuilder.fromXDR(signedxdr,network)
+
+        const response = await server.submitTransaction(signedTx)
+        console.log(response)
+        if (response.successful){
+            console.log("success")
+            return [true,response.hash]
+        }else{
+            return [false,""]
+        }
+
+
+    }catch (e){
+        console.log(e)
+        return [false,""]
+    }
+}
 /**
  * Find stream you have created
  */
@@ -149,13 +240,30 @@ export async function findCreatedStreams(): Promise<ServerApi.TransactionRecord[
         .limit(200) // todo figure this out
         .call()
 
-    const streams = await Promise.all(operationsToTest.records.filter(record => {
+    let streams = await Promise.all(operationsToTest.records.filter(record => {
         return record.type == "payment" && record.amount == "0.0000001" && record.from == accountId
     }).map(async (record) => {
         return await record.transaction()
     }))
+    //
+    let toReturn : Array<ServerApi.TransactionRecord> = []
 
-    return streams.filter(tx => tx.memo.startsWith("stellarstream"))
+    let res = await Promise.all(streams.map(async tx =>{
+            let ops = await tx.operations()
+            let streamAddr = ops.records[0].account
+            let exists = true
+            let account  = await server.accounts().accountId(streamAddr).call().catch(res => {
+                console.log("rejected");
+                exists = false
+            })
+            if(exists){
+                toReturn.push(tx)
+            }
+    }))
+
+
+
+    return toReturn.filter(tx => tx.memo.startsWith("stellarstream"))
 }
 
 /**
@@ -170,80 +278,88 @@ export async function findCreatedStreams(): Promise<ServerApi.TransactionRecord[
  * @param endTime end time in epoch seconds
  * @param interval interval to increase claimable amount
  */
-export async function createPaymentStream(amount: string, asset: Asset, destination: string, endTime: number, interval: number): Promise<[boolean, string, Horizon.SubmitTransactionResponse]> {
-    const fee = await server.fetchBaseFee()
-    const streamKeyPair = Keypair.random()
-    const accountObject: Account = await account()
-    let native = true
-    let reserve = "2" // extra xlm for extra signers
-    if (asset != Asset.native()) {
-        native = false
-        reserve = "2.5" // trustline
-    }
-    const txBuilder = new TransactionBuilder(accountObject, {
-        fee: fee.toString(),
-        networkPassphrase: Networks.TESTNET
-    })
-        .addOperation(Operation.createAccount({
-            destination: streamKeyPair.publicKey(),
-            startingBalance: reserve
-        }))//todo just use create account and not an extra payment
-    if (!native) {
-        txBuilder.addOperation(Operation.changeTrust({
-            asset: asset,
-            source: streamKeyPair.publicKey()
-        }))
-    }
-    const tx = txBuilder
-        .addOperation(Operation.payment({
-            amount: amount,
-            asset: asset,
-            destination: streamKeyPair.publicKey()
-        }))
-        .addOperation(
-            Operation.setOptions(
-                {
-                    signer: {
-                        ed25519PublicKey: tssAccountId,
-                        weight: 1
-                    },
-                    source: streamKeyPair.publicKey()
+export async function createPaymentStream(amount: string, asset: Asset, destination: string, endTime: number, interval: number): Promise<[boolean, string, Horizon.SubmitTransactionResponse?]> {
+    try {
+        const fee = await server.fetchBaseFee()
+        const streamKeyPair = Keypair.random()
+        const accountObject: Account = await account()
+        let native = true
+        let reserve = "2" // extra xlm for extra signers
+        if (!asset.isNative()) {
+            console.log("not native")
+            console.log(asset)
+            native = false
+            reserve = "2.5" // trustline
+        }
+        const txBuilder = new TransactionBuilder(accountObject, {
+            fee: fee.toString(),
+            networkPassphrase: Networks.TESTNET
+        })
+            .addOperation(Operation.createAccount({
+                destination: streamKeyPair.publicKey(),
+                startingBalance: reserve
+            }))//todo just use create account and not an extra payment
+        if (!native) {
+            txBuilder.addOperation(Operation.changeTrust({
+                asset: asset,
+                source: streamKeyPair.publicKey()
+            }))
+        }
+        const tx = txBuilder
+            .addOperation(Operation.payment({
+                amount: amount,
+                asset: asset,
+                destination: streamKeyPair.publicKey()
+            }))
+            .addOperation(
+                Operation.setOptions(
+                    {
+                        signer: {
+                            ed25519PublicKey: tssAccountId,
+                            weight: 1
+                        },
+                        source: streamKeyPair.publicKey()
 
-                }
+                    }
+                )
             )
-        )
-        .addOperation(
-            Operation.setOptions(
-                {
-                    signer: {
-                        ed25519PublicKey: accountObject.accountId(),
-                        weight: 1
-                    },
-                    source: streamKeyPair.publicKey()
+            .addOperation(
+                Operation.setOptions(
+                    {
+                        signer: {
+                            ed25519PublicKey: accountObject.accountId(),
+                            weight: 1
+                        },
+                        source: streamKeyPair.publicKey()
 
-                }
+                    }
+                )
             )
-        )
-        .addOperation(Operation.payment({
-            amount: "0.0000001",
-            asset: Asset.native(),
-            destination: destination
-        }))
-        .setTimeout(0)
-        .addMemo(Memo.text(`stellarstream_${endTime}_${interval}`)) // "stellarstream_endEpoch_intervalSeconds"
-        .build()
+            .addOperation(Operation.payment({
+                amount: "0.0000001",
+                asset: Asset.native(),
+                destination: destination
+            }))
+            .setTimeout(0)
+            .addMemo(Memo.text(`stellarstream_${endTime}_${interval}`)) // "stellarstream_endEpoch_intervalSeconds"
+            .build()
 
-    const albedoSignedXdr = await signWithAlbedo(tx.toXDR())
-    const albedoSignedTx = TransactionBuilder.fromXDR(albedoSignedXdr, network)
-    albedoSignedTx.sign(streamKeyPair)
+        const albedoSignedXdr = await signWithAlbedo(tx.toXDR())
+        const albedoSignedTx = TransactionBuilder.fromXDR(albedoSignedXdr, network)
+        albedoSignedTx.sign(streamKeyPair)
 
-    console.log(albedoSignedTx.toXDR())
+        console.log(albedoSignedTx.toXDR())
 
-    const submitResponse = await server.submitTransaction(albedoSignedTx)
-    // @ts-ignore
-    if (submitResponse.successful) {
-        return [true, submitResponse.hash, submitResponse]
-    } else {
-        return [false, "", submitResponse]
+        const submitResponse = await server.submitTransaction(albedoSignedTx)
+// @ts-ignore
+        if (submitResponse.successful) {
+            return [true, submitResponse.hash, submitResponse]
+        } else {
+            return [false, "", submitResponse]
+        }
+    }catch (e){
+        console.log(e)
+        return [false,"",null]
     }
+
 }

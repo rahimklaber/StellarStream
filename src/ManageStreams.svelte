@@ -16,11 +16,13 @@
     } from "svelte-materialify";
 
     import StreamProps from "./StreamProps";
-    import {findCreatedStreams, findPaymentStreams} from "./stellar";
+    import {findCreatedStreams, findPaymentStreams,reclaimStream} from "./stellar";
     import {Asset} from "stellar-base";
     import {shortenAddress} from "./utils";
     import {mdiContentCopy} from "@mdi/js";
-
+    import {updateClipboard} from "./utils";
+    import {Notyf} from "notyf";
+    const notyf = new Notyf()
     let props: Array<StreamProps> = []
 
     async function populateStreams() {
@@ -38,15 +40,22 @@
         }))
     }
 
-    populateStreams() // Todo: figure out how to do this when you connect the wallet aswell
-
-    function updateClipboard(newClip) {
-        navigator.clipboard.writeText(newClip).then(function() {
-            /* clipboard successfully set */
-        }, function() {
-            /* clipboard write failed */
-        });
+    /**
+     * reclaim a stream and notify the user the result
+     * @param hash hash of the stream tx
+     */
+    async function reclaimStreamAndNotify(hash : string){
+        const [success, reclaimHash] = await reclaimStream(hash)
+        console.log(success)
+        if(success){
+            notyf.success(`Stream reclaimed successfully. <a href=\"https://stellar.expert/explorer/testnet/tx/${reclaimHash}\" target=\"_blank\">Tx Hash</a>`)
+            props = props.filter(prop => prop.txHash != hash)
+        }else {
+            notyf.error("Reclaiming stream failed.")
+        }
     }
+
+    populateStreams() // Todo: figure out how to do this when you connect the wallet aswell
 </script>
 
 <div style="margin-top: 2.5%">
@@ -65,6 +74,7 @@
                     <DataTableCell>End time</DataTableCell>
                     <DataTableCell>Interval</DataTableCell>
                     <DataTableCell>recipient</DataTableCell>
+                    <DataTableCell>tx hash</DataTableCell>
                 </DataTableRow>
             </DataTableHead>
             <DataTableBody>
@@ -92,7 +102,13 @@
                             </span>
                         </DataTableCell>
                         <DataTableCell>
-                            <Button>reclaim</Button>
+                            {shortenAddress(prop.txHash)}
+                            <span class="copyhover" on:click={e => updateClipboard(prop.txHash)}>
+                                <Icon path={mdiContentCopy}/>
+                            </span>
+                        </DataTableCell>
+                        <DataTableCell>
+                            <Button on:click={() => reclaimStreamAndNotify(prop.txHash)}>reclaim</Button>
                         </DataTableCell>
                     </DataTableRow>
                 {/each}

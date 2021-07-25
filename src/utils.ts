@@ -9,3 +9,11 @@
 export function shortenAddress(address: string) {
     return address.slice(0, 6) + "..." + address.slice(50, 56)
 }
+
+export function updateClipboard(newClip) {
+    navigator.clipboard.writeText(newClip).then(function() {
+        /* clipboard successfully set */
+    }, function() {
+        /* clipboard write failed */
+    });
+}
